@@ -22,6 +22,7 @@ typedef vector<instruction> vins;
 string readcmd()
 {
 	string input;
+	cout<<"$ ";
     getline(cin,input);
 	return input; 
 	// trie to be implemented	
@@ -31,20 +32,21 @@ vins split_input(string input)
 {
 	vs args;
 	vins instruction_list;
-       	//start parsing make the list
 	instruction inst;
-	//sample
-	//string input="cat file1.txt|sort|grep \".*\" > save.txt";
-
 	stringstream X(input);
 	string S1;
-	while(getline(X,S1,'|'))
+	while(getline(X,S1,'|'))		//seperate on the basis of 'pipe'
 	{
 		inst.params.clear();
 		stringstream Y(S1);
 		string S2;
-		while(getline(Y,S2,' '))
-		{
+
+		while(1)
+		{	while(Y.peek() == ' ')
+			Y.get();
+
+			if(!getline(Y,S2,' ')) break;
+			
 			inst.params.push_back(S2);
 		}
 		inst.prog=inst.params[0];
@@ -57,23 +59,21 @@ vins split_input(string input)
 
 int execute(vins instructions){
 	
-	//if only one cmd
+	//if no commands
 	if(instructions.size()==0) return 0;
 
+	//if only one cmd,execute it
 	if(instructions.size()==1){
-			const char* str=instructions[0].prog.c_str();	
-			
+			//build the args
 			char *argv[1000];
-
 			int j;
 			for(j=0;j<instructions[0].params.size();j++){
 				argv[j]=new char[instructions[0].params[j].size()+1];
 				strcpy(argv[j],instructions[0].params[j].c_str());
 			}
-
 			argv[j]=(char*)NULL;
-			instructions[0].fds[0]=0;
-			instructions[0].fds[1]=1;
+
+			//execute it as a child
 			pid_t pid = fork();  
 		    if (pid == 0) { 
 		        if (execvp(argv[0], (char* const*)argv) < 0) { 
@@ -83,14 +83,14 @@ int execute(vins instructions){
 		        exit(0); 
 		    }
 			wait(NULL); 
-			//cout<<"\n";
 	}
 	else{ //logic for PIPED commands
 		int i;
 		int count=instructions.size();
 		int (*pipes)[2]=new int[count-1][2];
-		//make pipe connections
-		instructions[0].fds[0]=0;
+
+		//make a note of pipe connections beforehand
+		instructions[0].fds[0]=0;	//first program to take input from stdin
 		for(i=0;i<count-1;i++){
 			
 			if(pipe(pipes[i])==-1)
@@ -98,18 +98,13 @@ int execute(vins instructions){
 				perror("pipe");
 			}
 			instructions[i].fds[1]=pipes[i][1];
-			instructions[i+1].fds[0]=pipes[i][0];
-			
+			instructions[i+1].fds[0]=pipes[i][0];			
 		}
-		instructions[count-1].fds[1]=1;
-		// cout<<"**";
-		// cout<<instructions[count-1].fds[0];
-		// cout<<instructions[count-1].fds[1];
-		// cout<<"**\n";
-		for(i=0;i<count;i++){
-			const char* str=instructions[i].prog.c_str();
-			char *argv[1000];
+		instructions[count-1].fds[1]=1;  //for final output to stdout
 
+		for(i=0;i<count;i++){
+			//build args for each command
+			char *argv[1000];
 			int j;
 			for(j=0;j<instructions[i].params.size();j++){
 				argv[j]=new char[instructions[i].params[j].size()+1];
@@ -120,9 +115,10 @@ int execute(vins instructions){
 
 			pid_t pid = fork();  
 
-		    if (pid == 0) { 
+		    if (pid == 0) { //in child
+				//make pipe connections as actual input and output
 				if(instructions[i].fds[0]!=0){
-				dup2(instructions[i].fds[0],0);
+				dup2(instructions[i].fds[0],0);	
 				close(instructions[i].fds[0]);
 				}
 				if(instructions[i].fds[1]!=1){
@@ -132,7 +128,6 @@ int execute(vins instructions){
 				for(i=0;i<count-1;i++){
 					close(pipes[i][1]);
 					close(pipes[i][0]);
-					//wait(NULL);
 				}
 		        if (execvp(argv[0], (char* const*)argv) < 0) { 
 		        	perror("error");
@@ -140,19 +135,14 @@ int execute(vins instructions){
 		        } 
 		        exit(0); 
 		    }
-			//free(argv);
-			//wait(NULL); 
-			
-			//cout<<"\n";
 	    }
 		for(i=0;i<count-1;i++){
 			close(pipes[i][1]);
 			close(pipes[i][0]);
-			//wait(NULL);
+			wait(NULL);
 		}
-		//wait(NULL);
-		free(pipes);
-		
+		wait(NULL);
+		free(pipes);		
 	}
 
 	return 0;
