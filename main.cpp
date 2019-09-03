@@ -21,8 +21,9 @@ int main()
 
 	ret=shell_start(ps1);	//pass apt variables
 
-	if(ret==-1)
-		cout<<"Error:In shell_start.. exiting";
-
+	if(ret==-1){
+		cout<<"\nError:In shell_start.. exiting\n";
+		return -1;
+	}
 	return 0;
 }
