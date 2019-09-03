@@ -22,8 +22,8 @@ int main()
 	ret=shell_start(ps1);	//pass apt variables
 
 	if(ret==-1){
-		cout<<"\nError:In shell_start.. exiting\n";
-		return -1;
+		cout<<"\nEnter valid command.. \n";
+		//exit(0);
 	}
 	return 0;
 }

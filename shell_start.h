@@ -121,12 +121,19 @@ int execute(vins instructions){
 			pid_t pid = fork();  
 
 		    if (pid == 0) { 
-				if(instructions[i].fds[0]!=0)
+				if(instructions[i].fds[0]!=0){
 				dup2(instructions[i].fds[0],0);
-
-				if(instructions[i].fds[1]!=1)
+				close(instructions[i].fds[0]);
+				}
+				if(instructions[i].fds[1]!=1){
 				dup2(instructions[i].fds[1],1);
-				
+				close(instructions[i].fds[1]);
+				}
+				for(i=0;i<count-1;i++){
+					close(pipes[i][1]);
+					close(pipes[i][0]);
+					//wait(NULL);
+				}
 		        if (execvp(argv[0], (char* const*)argv) < 0) { 
 		        	perror("error");
 		            return -1; 
@@ -141,8 +148,9 @@ int execute(vins instructions){
 		for(i=0;i<count-1;i++){
 			close(pipes[i][1]);
 			close(pipes[i][0]);
-			
+			//wait(NULL);
 		}
+		//wait(NULL);
 		free(pipes);
 		
 	}
@@ -157,17 +165,13 @@ int shell_start(string ps1)
 	while(1){
 		//execute forever
 	string input= readcmd();
+	if(input=="quit") break;
 
 	//parse input and split it for exectution
 	vins instructions = split_input(input);
 
 	//exectute the list
 	int ret = execute(instructions);
-	//cout<<"ret:"<<ret;
-	if(ret==-1) {
-		cout<<"Error, exiting";
-		return ret;
-		}
 	}	
 	
 	return 0;
