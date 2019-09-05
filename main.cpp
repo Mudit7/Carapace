@@ -1,7 +1,4 @@
-#include<iostream>
-#include<unistd.h>
-#include<string>
-#include<vector>
+#include "headers.h"
 
 #include "shell_init.h"
 #include "shell_start.h"
@@ -22,8 +19,8 @@ int main()
 	ret=shell_start(ps1);	//pass apt variables
 
 	if(ret==-1){
-		cout<<"\nEnter valid command.. \n";
-		//exit(0);
+		//cout<<"\nEnter valid command.. \n";
+		exit(0);
 	}
 	return 0;
 }
