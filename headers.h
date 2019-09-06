@@ -1,4 +1,3 @@
-//#include<string.h>
 #include<vector>
 #include<sys/types.h>
 #include<sys/wait.h>
@@ -7,3 +6,4 @@
 #include<unistd.h>
 #include<string>
 #include<fstream>
+#include<fcntl.h>

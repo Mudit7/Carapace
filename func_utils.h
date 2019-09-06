@@ -1,5 +1,5 @@
 #include "headers.h"
-
+#define RCFILE "/Users/mudit/OS/Myshell/myrc"
 using namespace std;
 
 typedef vector<string> vs;
@@ -13,13 +13,13 @@ typedef struct instruction{
 
 typedef vector<instruction> vins;
 
-string arr[5]={"cd","alias","history","alarm","PS1"};
-vector<string> excepts(arr,arr+5);
+string arr[6]={"cd","alias","history","alarm","PS1","echo"};
+vector<string> excepts(arr,arr+6);
 
 string getvar(string srchkey)
 {
     ifstream  rcfile_r;
-    rcfile_r.open("myrc");
+    rcfile_r.open(RCFILE);
 	string entry,key,value;
     while(rcfile_r)
 	{
@@ -39,11 +39,10 @@ string getvar(string srchkey)
 void setvar(string key,string value)
 {	
 	string val=getvar(key);
-	//cout<<"data is "<<value;
 	if(val.empty()) 
 	{
 		ofstream rcfile_w;
-		rcfile_w.open("myrc", std::ios::app);
+		rcfile_w.open(RCFILE, std::ios::app);
 		rcfile_w<<key<<"="<<value<<"\n";
 		rcfile_w.close();
 		
@@ -51,7 +50,7 @@ void setvar(string key,string value)
 	else
 	{
 		ifstream rcfile_i;
-		rcfile_i.open("myrc");
+		rcfile_i.open(RCFILE);
 		string entry,tempkey,tempval,data;
 		while(rcfile_i)
 		{
@@ -70,7 +69,7 @@ void setvar(string key,string value)
 		}
 		rcfile_i.close();
 		fstream f;
-		f.open("myrc",ios::trunc|ios::out);
+		f.open(RCFILE,ios::trunc|ios::out);
 		f<<data.c_str();
 		f.close();
 	}	
@@ -105,11 +104,12 @@ vins split_input(string input)
 			Y.get();
 
 			if(!getline(Y,S2,' ')) break;
-			
 			inst.params.push_back(S2);
 		}
 		inst.prog=inst.params[0];
 		inst.bg_flag=0;
+
+		
 
 		//handel for execptions
 		vector<string>::iterator it=find(excepts.begin(),excepts.end(),inst.prog);
@@ -121,27 +121,42 @@ vins split_input(string input)
 			//execute them uniquely
 			if(inst.prog=="cd")
 			{
-				chdir(inst.params[1].c_str());
+				string dir=inst.params[1];
+				string home=getvar("HOME");
+				size_t n= dir.find("~");
+				if(n!=dir.size())
+				{
+						dir.replace(n,1,home.c_str());
+						
+				}
+				chdir(dir.c_str());
 			}
 			else if(inst.prog=="alias")
 			{
 				string old,newone,full;
 				for(int i=1;i<inst.params.size();i++)
 				full=full+inst.params[i]+" ";
-
-				//full.substr(1,full.size()-2);
-
 				stringstream X(full.c_str());
 				getline(X,old,'=');
 				getline(X,newone,'\0');
 				setvar(old,newone);
-
 				excepts.push_back(old);
 
 			}
 			else if(inst.prog=="PS1")
 			{
 				setvar("PS1",inst.params[1]);
+			}
+			else if(inst.prog=="echo")
+			{
+				if(inst.params[1]!="$$"){
+					instruction_list.push_back(inst);
+				}
+				else{
+					int pid=(int)getpid();
+					cout<<pid<<"\n";
+				}
+
 			}
 			else{	// it would mean an alias variable is encountered
 				string newval=getvar(inst.prog);
@@ -161,6 +176,24 @@ int execute(vins instructions){
 
 	//if only one cmd,execute it
 	if(instructions.size()==1){
+			//handel for redirection operator
+			instructions[0].fds[1]=1;
+			for(int i=1;i<instructions[0].params.size();i++)
+			{
+				if((instructions[0].params[i]==">")||(instructions[0].params[i]==">>"))
+				{
+					string filename=instructions[0].params[i+1];
+					string op=instructions[0].params[i];
+					instructions[0].params.erase(instructions[0].params.begin()+i+1);
+					instructions[0].params.erase(instructions[0].params.begin()+i);
+					//open file 
+					if(op==">")
+					instructions[0].fds[1]=open(filename.c_str(),O_WRONLY|O_CREAT|O_TRUNC,0777);
+					if(op==">>")
+					instructions[0].fds[1]=open(filename.c_str(),O_WRONLY|O_CREAT|O_APPEND,0777);
+				}
+			}
+
 			//build the args
 			char *argv[1000];
 			int j;
@@ -173,6 +206,9 @@ int execute(vins instructions){
 			//execute it as a child
 			pid_t pid = fork();  
 		    if (pid == 0) { 
+				if(instructions[0].fds[1]!=1){
+				close(instructions[0].fds[1]);
+				}
 		        if (execvp(argv[0], (char* const*)argv) < 0) { 
 		        	perror("error");
 		            return -1;
@@ -182,13 +218,12 @@ int execute(vins instructions){
 			wait(NULL); 
 	}
 	else{ //logic for PIPED commands
-		int i;
 		int count=instructions.size();
 		int (*pipes)[2]=new int[count-1][2];
 
-		//make a note of pipe connections beforehand
+		//set up pipe connections beforehand
 		instructions[0].fds[0]=0;	//first program to take input from stdin
-		for(i=0;i<count-1;i++){
+		for(int i=0;i<count-1;i++){
 			
 			if(pipe(pipes[i])==-1)
 			{
@@ -198,8 +233,9 @@ int execute(vins instructions){
 			instructions[i+1].fds[0]=pipes[i][0];			
 		}
 		instructions[count-1].fds[1]=1;  //for final output to stdout
+		//check for redirection and handle seperately
 
-		for(i=0;i<count;i++){
+		for(int i=0;i<count;i++){
 			//build args for each command
 			char *argv[1000];
 			int j;
@@ -234,7 +270,7 @@ int execute(vins instructions){
 				abort();
 		    }
 	    }
-		for(i=0;i<count-1;i++){
+		for(int i=0;i<count-1;i++){
 			close(pipes[i][1]);
 			close(pipes[i][0]);
 			wait(NULL);
