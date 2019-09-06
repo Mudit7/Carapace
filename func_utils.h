@@ -207,6 +207,7 @@ int execute(vins instructions){
 			pid_t pid = fork();  
 		    if (pid == 0) { 
 				if(instructions[0].fds[1]!=1){
+				dup2(instructions[0].fds[1],1);
 				close(instructions[0].fds[1]);
 				}
 		        if (execvp(argv[0], (char* const*)argv) < 0) { 
