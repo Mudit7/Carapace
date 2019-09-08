@@ -1,6 +1,6 @@
 #include "headers.h"
 #include "func_utils.h"
-#define RCFILE "/Users/mudit/OS/Myshell/myrc"
+#define RCFILE "/home/mudit/OS/Myshell/myrc"
 using namespace std;
 
 void putvar(string key,string value)

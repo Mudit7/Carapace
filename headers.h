@@ -7,3 +7,8 @@
 #include<string>
 #include<fstream>
 #include<fcntl.h>
+#include<string.h>
+#include<algorithm>
+#include<termios.h>
+#include<list>
+#include<signal.h>

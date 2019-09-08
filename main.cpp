@@ -4,7 +4,6 @@
 #include "shell_start.h"
 
 using namespace std;
-
 int main()
 {
 	int ret=0;

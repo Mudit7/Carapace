@@ -1,5 +1,5 @@
 #include "headers.h"
-#define RCFILE "/Users/mudit/OS/Myshell/myrc"
+#define RCFILE "/home/mudit/OS/Myshell/myrc"
 using namespace std;
 
 typedef vector<string> vs;
@@ -12,9 +12,33 @@ typedef struct instruction{
 }instruction;
 
 typedef vector<instruction> vins;
-
+vs history;
 string arr[6]={"cd","alias","history","alarm","PS1","echo"};
 vector<string> excepts(arr,arr+6);
+
+struct termios orig_termios;
+
+void print_history()
+{
+	for(int i=0;i<history.size();i++)
+		cout<<history[i]<<endl;
+}
+void backn(int n)
+{
+	for(int i=0;i<n;i++)
+	cout<<"\b \b";
+}
+void disableRawMode() {
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+}
+
+void enableRawMode() {
+  tcgetattr(STDIN_FILENO, &orig_termios);
+  atexit(disableRawMode);
+  struct termios raw = orig_termios;
+  raw.c_lflag &= ~(ECHO | ICANON);
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+}
 
 string getvar(string srchkey)
 {
@@ -44,8 +68,7 @@ void setvar(string key,string value)
 		ofstream rcfile_w;
 		rcfile_w.open(RCFILE, std::ios::app);
 		rcfile_w<<key<<"="<<value<<"\n";
-		rcfile_w.close();
-		
+		rcfile_w.close();		
 	}
 	else
 	{
@@ -77,11 +100,81 @@ void setvar(string key,string value)
 
 string readcmd()
 {
-	string input;
-	cout<<getvar("PS1")<<" ";
-    getline(cin,input);
-	return input; 
-	// trie to be implemented	
+	string ps1=getvar("PS1");
+	//cout<<ps1<<" ";	
+	string prompt=ps1+" ";
+	write(STDOUT_FILENO,prompt.c_str(),prompt.size());
+	enableRawMode();
+	//atexit(disableRawMode);
+	char str[100];
+  	char c;
+	int i=0;
+	int up=0;
+  	while (1) {
+	int size=read(STDIN_FILENO, &c, 1);
+	if(c==27)
+	{
+		char c=getchar();
+		c=getchar();
+		if(c=='A'){
+		//history.push_back(str);
+			if(up== history.size()) {
+				continue;
+			}
+			if(up>0){
+				backn(history.at(up-1).size());	
+				cout<<history.at(up);
+			}
+			if(up==0)
+				cout<<history.at(up);
+
+			if(up<history.size())
+				up++;
+		}
+		if(c=='B'){
+			if(up>0) up--;
+
+			if(up==0)
+			 	continue;
+			else{
+				 backn(history.at(up).size());
+				 cout<<history.at(up-1);
+			 }			
+		 }
+	}
+	else{
+		if (iscntrl(c)) {
+	 		//printf("%d\n", c);
+			if(c=='\n')
+			{//end of command
+				str[i]='\0';
+				//up--;
+				break;
+			}
+			if((c==127)&&(i>0)){
+				backn(1);
+				str[--i]='\0';			
+			}
+		}
+		else{
+			str[i++]=c;
+			cout<<c;
+		}		
+	}
+	fflush(0);
+  }
+  string input(str);
+  //cout<<input<<endl;
+if((!input.empty())&&(input!="\n"))
+  	history.insert(history.begin(),input);
+
+cout<<endl;
+
+if((up==0)&&history.empty()) {  return "";}
+else if(up==0) return history.at(0);
+else
+return history.at(up-1);
+
 }
 
 vins split_input(string input)
