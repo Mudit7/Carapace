@@ -1,5 +1,5 @@
 USER=mudit
-HOME=/Users/mudit
+HOME=/home/mudit
 PATH=/bin
 HOSTNAME=local
 PS1=$

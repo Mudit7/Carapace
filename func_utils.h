@@ -157,6 +157,9 @@ string readcmd()
 			}
 		}
 		else{
+			if(c==34)
+			str[i++]=92;
+			
 			str[i++]=c;
 			cout<<c;
 		}		
@@ -172,8 +175,7 @@ cout<<endl;
 
 if((up==0)&&history.empty()) {  return "";}
 else if(up==0) return history.at(0);
-else
-return history.at(up-1);
+else return history.at(up-1);
 
 }
 
@@ -217,10 +219,10 @@ vins split_input(string input)
 				string dir=inst.params[1];
 				string home=getvar("HOME");
 				size_t n= dir.find("~");
-				if(n!=dir.size())
+				if(n!=string::npos)
 				{
-						dir.replace(n,1,home.c_str());
-						
+					cout<<n;
+						//dir.replace(n,1,home.c_str());			
 				}
 				chdir(dir.c_str());
 			}

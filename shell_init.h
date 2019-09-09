@@ -14,10 +14,10 @@ void putvar(string key,string value)
 int shell_init(string &path,string &home,string &user,string &hostname,string &ps1)
 {
 	ofstream rcfile_w;
-	rcfile_w.open(RCFILE, std::ios::trunc);
+	rcfile_w.open(RCFILE, ios::trunc|ios::out);
 	rcfile_w.close();	
 	putvar("USER","mudit");
-	putvar("HOME","/Users/mudit");
+	putvar("HOME","/home/mudit");
 	putvar("PATH","/bin");
 	putvar("HOSTNAME","local");
 	putvar("PS1","$");
