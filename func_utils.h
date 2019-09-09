@@ -13,8 +13,10 @@ typedef struct instruction{
 
 typedef vector<instruction> vins;
 vs history;
-string arr[6]={"cd","alias","history","alarm","PS1","echo"};
-vector<string> excepts(arr,arr+6);
+map<int,string> bjob;
+int job_count=0;
+string arr[7]={"cd","alias","history","alarm","PS1","echo","jobs"};
+vector<string> excepts(arr,arr+7);
 
 struct termios orig_termios;
 
@@ -168,14 +170,15 @@ string readcmd()
   }
   string input(str);
   //cout<<input<<endl;
-if((!input.empty())&&(input!="\n"))
+	if((!input.empty())&&(input!="\n"))
   	history.insert(history.begin(),input);
 
-cout<<endl;
+	cout<<endl;
 
-if((up==0)&&history.empty()) {  return "";}
-else if(up==0) return history.at(0);
-else return history.at(up-1);
+	if((up==0)&&history.empty()) {  return "";}
+	else if((up==0)&&input.empty()) {  return "";}
+	else if(up==0) return history.at(0);
+	else return history.at(up-1);
 
 }
 
@@ -202,9 +205,15 @@ vins split_input(string input)
 			inst.params.push_back(S2);
 		}
 		inst.prog=inst.params[0];
-		inst.bg_flag=0;
-
-		
+		if(inst.params[inst.params.size()-1]=="&"){
+			inst.bg_flag=1;
+			inst.params.pop_back();
+			//cout<<"bg";
+		}	
+		else
+		{
+			inst.bg_flag=0;	
+		}
 
 		//handel for execptions
 		vector<string>::iterator it=find(excepts.begin(),excepts.end(),inst.prog);
@@ -221,8 +230,8 @@ vins split_input(string input)
 				size_t n= dir.find("~");
 				if(n!=string::npos)
 				{
-					cout<<n;
-						//dir.replace(n,1,home.c_str());			
+					//cout<<n;
+					dir.replace(n,1,home.c_str());			
 				}
 				chdir(dir.c_str());
 			}
@@ -251,6 +260,20 @@ vins split_input(string input)
 					int pid=(int)getpid();
 					cout<<pid<<"\n";
 				}
+			}
+			else if(inst.prog=="history")
+			{
+				print_history();
+			}
+			else if(inst.prog=="jobs")
+			{
+				for(map<int,string>:: iterator i=bjob.begin();i!=bjob.end();i++)
+				{
+					cout<<i->first<<" "<<i->second<<"\n";
+				}
+			}
+			else if(inst.prog=="alarm")
+			{
 
 			}
 			else{	// it would mean an alias variable is encountered
@@ -268,7 +291,7 @@ int execute(vins instructions){
 	
 	//if no commands
 	if(instructions.size()==0) return 0;
-
+	//cout<<"parent "<<getpgrp()<<"\n";
 	//if only one cmd,execute it
 	if(instructions.size()==1){
 			//handel for redirection operator
@@ -304,6 +327,14 @@ int execute(vins instructions){
 				if(instructions[0].fds[1]!=1){
 				dup2(instructions[0].fds[1],1);
 				close(instructions[0].fds[1]);
+				}
+				if(instructions[0].bg_flag==1)
+				{
+					setpgid(0,0);
+					int devnullfd=open("/dev/null",O_CREAT);
+					dup2(devnullfd,1);
+					close(devnullfd);
+					bjob.insert({job_count++,instructions[0].prog});
 				}
 		        if (execvp(argv[0], (char* const*)argv) < 0) { 
 		        	perror("error");
@@ -346,6 +377,7 @@ int execute(vins instructions){
 
 		    if (pid == 0) { //in child
 				//make pipe connections as actual input and output
+				
 				if(instructions[i].fds[0]!=0){
 				dup2(instructions[i].fds[0],0);	
 				close(instructions[i].fds[0]);
@@ -358,10 +390,18 @@ int execute(vins instructions){
 					close(pipes[i][1]);
 					close(pipes[i][0]);
 				}
+				if((instructions[i].bg_flag==1)&&(i==count-1))
+				{
+					setpgid(0,0);
+					int devnullfd=open("/dev/null",O_NONBLOCK);
+					dup2(devnullfd,1);
+					close(devnullfd);
+					bjob.insert({job_count++,instructions[i].prog});
+				}
 		        execvp(argv[0], (char* const*)argv);
 				perror("error");
 				for(int i=0;i<instructions[i].params.size();i++)
-				free(argv[i]);
+				//delete[] argv;
 				
 				abort();
 		    }
@@ -372,7 +412,7 @@ int execute(vins instructions){
 			wait(NULL);
 		}
 		wait(NULL);
-		free(pipes);		
+		//free(pipes);		
 	}
     return 0;
 }

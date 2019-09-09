@@ -12,3 +12,5 @@
 #include<termios.h>
 #include<list>
 #include<signal.h>
+#include<errno.h>
+#include<map>
